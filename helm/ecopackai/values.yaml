@@ -1,0 +1,100 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# EcoPackAI Helm Chart — Default Values
+# ═══════════════════════════════════════════════════════════════════════════
+
+replicaCount: 2
+
+image:
+  repository: gcr.io/ecopackai/api
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# --- Frontend Deployment ---
+frontend:
+  replicaCount: 2
+  image:
+    repository: gcr.io/ecopackai/frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# --- API Deployment ---
+api:
+  replicaCount: 2
+  port: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  livenessProbe:
+    httpGet:
+      path: /v1/health
+      port: 8000
+    initialDelaySeconds: 15
+    periodSeconds: 30
+  readinessProbe:
+    httpGet:
+      path: /v1/health
+      port: 8000
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+# --- Celery Worker ---
+worker:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# --- HPA ---
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+  frontend:
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 60
+
+# --- Service ---
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+# --- Ingress ---
+ingress:
+  enabled: true
+  host: ecopackai.local
+  tlsSecret: ecopackai-tls
+
+# --- Config ---
+config:
+  appEnv: production
+  logLevel: info
+  apiRateLimit: "100"
+  modelPath: /app/models
+  featureFlags: '{"enable_rl_packing": false, "enable_ab_testing": true}'
+  corsOrigins: "http://localhost,http://localhost:5173"
+  jwtAlgorithm: "HS256"
+  jwtExpireMinutes: "60"
+
+# --- Secrets ---
+secrets:
+  databaseUrl: ""  # Set via --set or sealed-secrets
+  redisUrl: ""
+  jwtSecretKey: "dev-secret-change-in-production"

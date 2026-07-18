@@ -1,0 +1,27 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-api-pdb
+  labels:
+    app: ecopackai
+    component: api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: ecopackai
+      component: api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-frontend-pdb
+  labels:
+    app: ecopackai
+    component: frontend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: ecopackai
+      component: frontend

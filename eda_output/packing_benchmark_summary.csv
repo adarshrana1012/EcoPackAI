@@ -1,0 +1,3 @@
+approach,mean_void_pct,median_void_pct,std_void_pct,mean_time_ms,median_time_ms,p95_time_ms,split_rate_pct,violation_rate_pct
+FFD,78.17,80.22,14.42,0.358,0.211,1.025,37.8,0.0
+FFD+Rotation,73.7,77.12,17.27,0.907,0.53,2.989,30.4,0.0

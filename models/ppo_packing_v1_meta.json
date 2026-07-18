@@ -1,0 +1,10 @@
+{
+  "version": "1",
+  "training_date": "2026-06-26T08:34:20.523887",
+  "n_timesteps": 10000,
+  "learning_rate": 0.0003,
+  "n_steps": 256,
+  "batch_size": 64,
+  "seed": 42,
+  "data_path": "data/train.csv"
+}

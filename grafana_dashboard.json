@@ -1,0 +1,251 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "ecopackai-sustainability",
+    "title": "EcoPackAI Full System Overview",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate (req/s)",
+        "type": "timeseries",
+        "gridPos": {
+          "w": 6,
+          "h": 8,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum by (path) (rate(http_requests_total[1m]))",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "P95 Latency",
+        "type": "timeseries",
+        "gridPos": {
+          "w": 6,
+          "h": 8,
+          "x": 6,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum by (le, path) (rate(http_request_duration_seconds_bucket[5m])))",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Error Rate (5xx)",
+        "type": "stat",
+        "gridPos": {
+          "w": 6,
+          "h": 8,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Active Model Version",
+        "type": "stat",
+        "gridPos": {
+          "w": 6,
+          "h": 8,
+          "x": 18,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "ecopackai_model_info",
+            "legendFormat": "{{version}}"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Confidence Dist",
+        "type": "heatmap",
+        "gridPos": {
+          "w": 6,
+          "h": 8,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "sum by (le) (rate(ecopackai_confidence_bucket[5m]))",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Tier Dist",
+        "type": "piechart",
+        "gridPos": {
+          "w": 6,
+          "h": 8,
+          "x": 6,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "sum by (tier) (ecopackai_tier_counts_total)",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Cache Hit Rate",
+        "type": "stat",
+        "gridPos": {
+          "w": 6,
+          "h": 8,
+          "x": 12,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(rate(ecopackai_cache_hits_total[5m])) / sum(rate(ecopackai_cache_requests_total[5m]))",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Classification Latency P95",
+        "type": "timeseries",
+        "gridPos": {
+          "w": 6,
+          "h": 8,
+          "x": 18,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{path=\"/v1/classify\"}[5m])))",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Void Volume % Trend",
+        "type": "timeseries",
+        "gridPos": {
+          "w": 8,
+          "h": 8,
+          "x": 0,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.5, rate(ecopackai_void_pct_bucket[5m]))",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Safety Violations (Rate)",
+        "type": "timeseries",
+        "gridPos": {
+          "w": 8,
+          "h": 8,
+          "x": 8,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "rate(ecopackai_safety_violations_total[5m])",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "CO2e Saved (Cumulative)",
+        "type": "stat",
+        "gridPos": {
+          "w": 8,
+          "h": 8,
+          "x": 16,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "ecopackai_co2e_saved_kg_total",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Container Memory",
+        "type": "timeseries",
+        "gridPos": {
+          "w": 8,
+          "h": 8,
+          "x": 0,
+          "y": 24
+        },
+        "targets": [
+          {
+            "expr": "sum by (container) (container_memory_usage_bytes{container=~\"ecopackai.*\"})",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "title": "DB Connections",
+        "type": "stat",
+        "gridPos": {
+          "w": 8,
+          "h": 8,
+          "x": 8,
+          "y": 24
+        },
+        "targets": [
+          {
+            "expr": "pg_stat_activity_count",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "title": "Redis Memory",
+        "type": "stat",
+        "gridPos": {
+          "w": 8,
+          "h": 8,
+          "x": 16,
+          "y": 24
+        },
+        "targets": [
+          {
+            "expr": "redis_memory_used_bytes",
+            "refId": "A"
+          }
+        ]
+      }
+    ],
+    "schemaVersion": 39,
+    "version": 2
+  },
+  "overwrite": true
+}

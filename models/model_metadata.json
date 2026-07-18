@@ -1,0 +1,27 @@
+{
+  "feature_columns": [
+    "length_cm",
+    "width_cm",
+    "height_cm",
+    "weight_g",
+    "material_type",
+    "volume_cm3",
+    "aspect_ratio",
+    "historical_material_volume_cm3"
+  ],
+  "target_column": "fragility_label",
+  "tier_labels": {
+    "0": "None",
+    "1": "Low",
+    "2": "Medium",
+    "3": "Critical"
+  },
+  "best_params": {
+    "n_estimators": 450,
+    "min_samples_leaf": 4,
+    "max_features": "sqrt",
+    "max_depth": 25,
+    "class_weight": "balanced_subsample"
+  },
+  "recommended_strategy": "balanced + threshold=0.25"
+}

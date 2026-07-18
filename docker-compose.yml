@@ -1,0 +1,236 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# EcoPackAI — Docker Compose for Local Development (Prompt 37)
+# ═══════════════════════════════════════════════════════════════════════════
+# Usage:
+#   cp .env.example .env          # configure environment
+#   docker compose up -d          # start all services
+#   docker compose logs -f api    # follow API logs
+#   docker compose down -v        # stop and clean up
+# ═══════════════════════════════════════════════════════════════════════════
+
+services:
+  # ----- FastAPI Application -----
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecopackai-api
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 4
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://ecopack:ecopack_secret@postgres:5432/ecopackai}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - MODEL_PATH=/app/models
+      - API_RATE_LIMIT=${API_RATE_LIMIT:-100}
+      - FEATURE_FLAGS=${FEATURE_FLAGS:-{}}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost,http://localhost:5173}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-only-secret}
+    volumes:
+      - ./models:/app/models:ro
+      - ./data:/app/data:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - ecopackai
+
+  # ----- Celery Worker -----
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecopackai-worker
+    command: >
+      celery -A src.retrain_celery worker
+      --loglevel=info
+      --concurrency=2
+      --max-tasks-per-child=100
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://ecopack:ecopack_secret@postgres:5432/ecopackai}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - MODEL_PATH=/app/models
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ecopackai
+
+  # ----- Celery Beat Scheduler -----
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecopackai-beat
+    command: >
+      celery -A src.retrain_celery beat
+      --loglevel=info
+      --schedule=/tmp/celerybeat-schedule
+    environment:
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ecopackai
+
+  # ----- PostgreSQL -----
+  postgres:
+    image: postgres:15-alpine
+    container_name: ecopackai-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-ecopack}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ecopack_secret}
+      - POSTGRES_DB=${POSTGRES_DB:-ecopackai}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ecopack}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - ecopackai
+
+  # ----- Redis -----
+  redis:
+    image: redis:7-alpine
+    container_name: ecopackai-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - ecopackai
+
+  # ----- Prometheus -----
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: ecopackai-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ecopackai
+
+  # ----- Grafana -----
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: ecopackai-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-ecopack_grafana}
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/dashboards/ecopackai.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana_dashboard.json:/etc/grafana/dashboards/ecopackai.json:ro
+      - ./infra/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - ecopackai
+
+  # ----- Frontend React Application -----
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ecopackai-frontend
+    ports:
+      - "8080:80"
+    environment:
+      - VITE_API_URL=http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ecopackai
+
+  # ----- Loki -----
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: ecopackai-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+    restart: unless-stopped
+    networks:
+      - ecopackai
+
+  # ----- Promtail -----
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: ecopackai-promtail
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./infra/promtail-config.yaml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+    restart: unless-stopped
+    networks:
+      - ecopackai
+
+  # ----- Jaeger (Tracing) -----
+  jaeger:
+    image: jaegertracing/all-in-one:1.55
+    container_name: ecopackai-jaeger
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+    networks:
+      - ecopackai
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+networks:
+  ecopackai:
+    driver: bridge

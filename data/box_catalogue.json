@@ -1,0 +1,74 @@
+[
+  {
+    "sku": "BOX-XS",
+    "length_cm": 20,
+    "width_cm": 15,
+    "height_cm": 10,
+    "cost_usd": 0.5,
+    "material_type": "corrugated"
+  },
+  {
+    "sku": "BOX-S",
+    "length_cm": 30,
+    "width_cm": 20,
+    "height_cm": 15,
+    "cost_usd": 0.75,
+    "material_type": "corrugated"
+  },
+  {
+    "sku": "BOX-M",
+    "length_cm": 40,
+    "width_cm": 30,
+    "height_cm": 20,
+    "cost_usd": 1.1,
+    "material_type": "corrugated"
+  },
+  {
+    "sku": "BOX-L",
+    "length_cm": 50,
+    "width_cm": 40,
+    "height_cm": 30,
+    "cost_usd": 1.6,
+    "material_type": "corrugated"
+  },
+  {
+    "sku": "BOX-XL",
+    "length_cm": 60,
+    "width_cm": 50,
+    "height_cm": 40,
+    "cost_usd": 2.2,
+    "material_type": "corrugated"
+  },
+  {
+    "sku": "BOX-XXL",
+    "length_cm": 80,
+    "width_cm": 60,
+    "height_cm": 50,
+    "cost_usd": 3.0,
+    "material_type": "double-wall"
+  },
+  {
+    "sku": "BOX-F1",
+    "length_cm": 25,
+    "width_cm": 20,
+    "height_cm": 20,
+    "cost_usd": 1.2,
+    "material_type": "foam-lined"
+  },
+  {
+    "sku": "BOX-F2",
+    "length_cm": 35,
+    "width_cm": 25,
+    "height_cm": 25,
+    "cost_usd": 1.8,
+    "material_type": "foam-lined"
+  },
+  {
+    "sku": "BOX-F3",
+    "length_cm": 45,
+    "width_cm": 35,
+    "height_cm": 30,
+    "cost_usd": 2.5,
+    "material_type": "foam-lined"
+  }
+]

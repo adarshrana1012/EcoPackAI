@@ -1,0 +1,253 @@
+name: EcoPackAI CI/CD Full Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.12"
+  GCR_REGISTRY: gcr.io/${{ secrets.GCP_PROJECT_ID }}
+  API_IMAGE: ecopackai-api
+  FRONTEND_IMAGE: ecopackai-frontend
+  STAGING_URL: ${{ secrets.STAGING_URL }}
+  PROD_URL: ${{ secrets.PROD_URL }}
+
+jobs:
+  lint-backend:
+    name: 🔍 Lint Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install lint tools
+        run: pip install ruff mypy types-requests
+      - name: Ruff check
+        run: ruff check src/ tests/ --output-format=github
+      - name: Ruff format check
+        run: ruff format src/ tests/ --check
+      - name: Mypy type check
+        run: mypy src/ --ignore-missing-imports --no-error-summary
+        continue-on-error: true
+
+  lint-frontend:
+    name: 🎨 Lint Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      - name: Run ESLint
+        working-directory: ./frontend
+        run: npm run lint
+
+  test-backend:
+    name: 🧪 Test Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: ecopack
+          POSTGRES_PASSWORD: ecopack_secret
+          POSTGRES_DB: ecopackai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio httpx
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://ecopack:ecopack_secret@localhost:5432/ecopackai
+        run: alembic upgrade head
+      - name: Run pytest
+        env:
+          DATABASE_URL: postgresql://ecopack:ecopack_secret@localhost:5432/ecopackai
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          python -m pytest tests/ -v --cov=src --cov-report=xml --cov-fail-under=75
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage.xml
+
+  test-frontend:
+    name: 🧪 Test Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+      - name: Run tests with coverage
+        working-directory: ./frontend
+        run: npx vitest run --coverage
+
+  build-and-push:
+    name: 🐳 Build & Push
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, lint-backend, lint-frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker gcr.io --quiet
+      
+      - name: Build and Push API Image
+        run: |
+          docker build \
+            --tag ${{ env.GCR_REGISTRY }}/${{ env.API_IMAGE }}:${{ github.sha }} \
+            --tag ${{ env.GCR_REGISTRY }}/${{ env.API_IMAGE }}:latest \
+            .
+          docker push ${{ env.GCR_REGISTRY }}/${{ env.API_IMAGE }}:${{ github.sha }}
+          docker push ${{ env.GCR_REGISTRY }}/${{ env.API_IMAGE }}:latest
+
+      - name: Build and Push Frontend Image
+        run: |
+          docker build \
+            --tag ${{ env.GCR_REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            --tag ${{ env.GCR_REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest \
+            ./frontend
+          docker push ${{ env.GCR_REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+          docker push ${{ env.GCR_REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
+
+  deploy-staging:
+    name: 🚀 Deploy Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.30.0"
+      - name: Configure kubeconfig
+        run: echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+      - name: Deploy to staging
+        run: |
+          kubectl set image deployment/ecopackai-api \
+            api=${{ env.GCR_REGISTRY }}/${{ env.API_IMAGE }}:${{ github.sha }} \
+            --namespace=staging
+          kubectl set image deployment/ecopackai-frontend \
+            frontend=${{ env.GCR_REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            --namespace=staging
+          kubectl rollout status deployment/ecopackai-api --namespace=staging --timeout=120s
+          kubectl rollout status deployment/ecopackai-frontend --namespace=staging --timeout=120s
+
+  smoke-test-staging:
+    name: 💨 Smoke Test Staging
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    steps:
+      - name: Wait for rollout
+        run: sleep 15
+      - name: Health check API
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ env.STAGING_URL }}/v1/health" --max-time 10 --retry 3)
+          if [ "$STATUS" != "200" ]; then exit 1; fi
+      - name: Classify endpoint test
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${{ env.STAGING_URL }}/v1/classify" -H "Content-Type: application/json" -d '{"length_cm":20,"width_cm":15,"height_cm":10,"weight_g":500,"material_type":"electronics"}' --max-time 10)
+          if [ "$STATUS" != "200" ]; then exit 1; fi
+      - name: Frontend loads test
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${{ env.STAGING_URL }}/" --max-time 10 --retry 3)
+          if [ "$STATUS" != "200" ]; then exit 1; fi
+
+  load-test:
+    name: 📊 Performance Load Test
+    runs-on: ubuntu-latest
+    needs: smoke-test-staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install performance test dependencies
+        run: pip install locust
+      - name: Run Locust load test (Headless, 60s)
+        run: |
+          locust -f tests/locustfile.py --headless -u 10 -r 2 -t 60s --host ${{ env.STAGING_URL }} --csv=load_test_results
+      - name: Upload performance reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: locust-performance-reports
+          path: load_test_results*.csv
+
+  deploy-production:
+    name: 🚀 Deploy Production
+    runs-on: ubuntu-latest
+    needs: smoke-test-staging
+    environment:
+      name: production
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.30.0"
+      - name: Configure kubeconfig
+        run: echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+      - name: Deploy to production
+        run: |
+          kubectl config use-context prod-cluster
+          kubectl set image deployment/ecopackai-api \
+            api=${{ env.GCR_REGISTRY }}/${{ env.API_IMAGE }}:${{ github.sha }} \
+            --namespace=production
+          kubectl set image deployment/ecopackai-frontend \
+            frontend=${{ env.GCR_REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            --namespace=production
+          kubectl rollout status deployment/ecopackai-api --namespace=production --timeout=120s
+          kubectl rollout status deployment/ecopackai-frontend --namespace=production --timeout=120s
+      - name: Notify Slack
+        if: always()
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"Production deployment finished: ${{ job.status }}"}' ${{ secrets.SLACK_WEBHOOK_URL }}

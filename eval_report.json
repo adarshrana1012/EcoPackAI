@@ -1,0 +1,32 @@
+{
+  "evaluation_date": "2026-06-26T08:35:00.817361+00:00",
+  "n_orders": 500,
+  "data_path": "data/test.csv",
+  "model_path": "models/ppo_packing_v1",
+  "ffd_baseline": {
+    "approach": "FFD+Rotation",
+    "mean_reward": 0.45780779999999993,
+    "mean_void_pct": 73.7,
+    "median_void_pct": 77.12,
+    "std_void_pct": 17.25,
+    "violation_rate": 0.0,
+    "mean_time_ms": 1.617,
+    "total_violations": 0
+  },
+  "rl_policy": {
+    "approach": "PPO",
+    "mean_reward": -0.4369,
+    "std_reward": 2.912,
+    "mean_void_pct": 77.03,
+    "median_void_pct": 81.2,
+    "std_void_pct": 15.92,
+    "violation_rate": 13.2,
+    "mean_time_ms": 3.486,
+    "total_violations": 95
+  },
+  "comparison": {
+    "void_improvement_pp": -3.33,
+    "rl_better_void": false,
+    "rl_fewer_violations": false
+  }
+}

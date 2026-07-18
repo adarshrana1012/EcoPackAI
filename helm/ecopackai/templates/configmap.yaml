@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ "{{ .Release.Name }}" }}-config
+  labels:
+    app: ecopackai
+data:
+  APP_ENV: {{ "{{ .Values.config.appEnv | quote }}" }}
+  LOG_LEVEL: {{ "{{ .Values.config.logLevel | quote }}" }}
+  API_RATE_LIMIT: {{ "{{ .Values.config.apiRateLimit | quote }}" }}
+  MODEL_PATH: {{ "{{ .Values.config.modelPath | quote }}" }}
+  FEATURE_FLAGS: {{ "{{ .Values.config.featureFlags | quote }}" }}
+  CORS_ORIGINS: {{ "{{ .Values.config.corsOrigins | quote }}" }}
+  JWT_ALGORITHM: {{ "{{ .Values.config.jwtAlgorithm | quote }}" }}
+  JWT_EXPIRE_MINUTES: {{ "{{ .Values.config.jwtExpireMinutes | quote }}" }}

@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ "{{ .Release.Name }}" }}-api
+  labels:
+    app: ecopackai
+    component: api
+    chart: {{ "{{ .Chart.Name }}-{{ .Chart.Version }}" }}
+spec:
+  replicas: {{ "{{ .Values.api.replicaCount }}" }}
+  selector:
+    matchLabels:
+      app: ecopackai
+      component: api
+  template:
+    metadata:
+      labels:
+        app: ecopackai
+        component: api
+    spec:
+      containers:
+        - name: api
+          image: "{{ "{{ .Values.image.repository }}:{{ .Values.image.tag }}" }}"
+          imagePullPolicy: {{ "{{ .Values.image.pullPolicy }}" }}
+          ports:
+            - containerPort: {{ "{{ .Values.api.port }}" }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ "{{ .Release.Name }}" }}-config
+            - secretRef:
+                name: {{ "{{ .Release.Name }}" }}-secrets
+          resources:
+            requests:
+              cpu: {{ "{{ .Values.api.resources.requests.cpu }}" }}
+              memory: {{ "{{ .Values.api.resources.requests.memory }}" }}
+            limits:
+              cpu: {{ "{{ .Values.api.resources.limits.cpu }}" }}
+              memory: {{ "{{ .Values.api.resources.limits.memory }}" }}
+          livenessProbe:
+            httpGet:
+              path: /v1/health
+              port: {{ "{{ .Values.api.port }}" }}
+            initialDelaySeconds: {{ "{{ .Values.api.livenessProbe.initialDelaySeconds }}" }}
+            periodSeconds: {{ "{{ .Values.api.livenessProbe.periodSeconds }}" }}
+          readinessProbe:
+            httpGet:
+              path: /v1/ready
+              port: {{ "{{ .Values.api.port }}" }}
+            initialDelaySeconds: {{ "{{ .Values.api.readinessProbe.initialDelaySeconds }}" }}
+            periodSeconds: {{ "{{ .Values.api.readinessProbe.periodSeconds }}" }}
+          startupProbe:
+            httpGet:
+              path: /v1/startup
+              port: {{ "{{ .Values.api.port }}" }}
+            failureThreshold: 30
+            periodSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ "{{ .Release.Name }}" }}-worker
+  labels:
+    app: ecopackai
+    component: worker
+spec:
+  replicas: {{ "{{ .Values.worker.replicaCount }}" }}
+  selector:
+    matchLabels:
+      app: ecopackai
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: ecopackai
+        component: worker
+    spec:
+      containers:
+        - name: worker
+          image: "{{ "{{ .Values.image.repository }}:{{ .Values.image.tag }}" }}"
+          imagePullPolicy: {{ "{{ .Values.image.pullPolicy }}" }}
+          command: ["celery", "-A", "src.retrain_celery", "worker",
+                    "--loglevel=info", "--concurrency=2"]
+          envFrom:
+            - configMapRef:
+                name: {{ "{{ .Release.Name }}" }}-config
+            - secretRef:
+                name: {{ "{{ .Release.Name }}" }}-secrets
+          resources:
+            requests:
+              cpu: {{ "{{ .Values.worker.resources.requests.cpu }}" }}
+              memory: {{ "{{ .Values.worker.resources.requests.memory }}" }}
+            limits:
+              cpu: {{ "{{ .Values.worker.resources.limits.cpu }}" }}
+              memory: {{ "{{ .Values.worker.resources.limits.memory }}" }}

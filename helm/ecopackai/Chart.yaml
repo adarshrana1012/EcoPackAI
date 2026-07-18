@@ -1,0 +1,14 @@
+apiVersion: v2
+name: ecopackai
+description: EcoPackAI — AI-Powered Packaging Optimization Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+maintainers:
+  - name: EcoPackAI Engineering
+    email: eng@ecopackai.dev
+keywords:
+  - packaging
+  - ml
+  - sustainability
+  - fastapi
