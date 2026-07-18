@@ -9,11 +9,11 @@ export const useApi = () => {
 
   const api = useMemo(() => {
     const instance = axios.create({
-      baseURL: '/v1',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
     instance.interceptors.request.use((config) => {
       if (token) {
