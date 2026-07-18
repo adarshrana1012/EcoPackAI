@@ -1,19 +1,24 @@
-import { useMemo } from 'react';
-import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useMemo } from "react";
+import axios from "axios";
+import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export const useApi = () => {
   const { token, logout } = useAuth();
   const navigate = useNavigate();
 
   const api = useMemo(() => {
+    // Use Railway backend URL when deployed.
+    // Fall back to localhost during local development.
+    const baseURL =
+      import.meta.env.VITE_API_URL || "http://localhost:8080/v1";
+
     const instance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+      baseURL,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
     instance.interceptors.request.use((config) => {
       if (token) {
@@ -27,11 +32,11 @@ export const useApi = () => {
       (error) => {
         if (error.response?.status === 401) {
           logout();
-          navigate('/login');
+          navigate("/login");
         } else if (error.response?.status === 429) {
-          console.warn('Rate limit exceeded');
-          // Add toast logic here later
+          console.warn("Rate limit exceeded");
         }
+
         return Promise.reject(error);
       }
     );
