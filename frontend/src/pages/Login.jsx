@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useApi } from '../hooks/useApi';
 import { Leaf, Lock, Mail, Loader2 } from 'lucide-react';
 
 export const Login = () => {
@@ -11,19 +11,25 @@ export const Login = () => {
   const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
+  const api = useApi();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-
     try {
-      const response = await axios.post('/v1/auth/login', { email, password });
+      const response = await api.post('/auth/login', { email, password });
       login(response.data.access_token);
       navigate('/dashboard');
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.detail || 'Invalid email or password.');
+      if (!err.response) {
+        setError('Network error: Unable to reach the API server. Please check your VITE_API_URL environment variable.');
+      } else if (err.response.status === 404) {
+         setError('API endpoint not found (404). Check if the API URL is configured correctly.');
+      } else {
+        setError(err.response?.data?.detail || 'Invalid email or password.');
+      }
     } finally {
       setLoading(false);
     }
