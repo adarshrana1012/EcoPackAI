@@ -4,6 +4,14 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+
+# 1. Accept the build argument from Railway
+ARG VITE_API_URL
+
+# 2. Bind it to an environment variable so Vite can see it during build
+ENV VITE_API_URL=$VITE_API_URL
+
+# Now Vite will properly bake the Railway URL into the production bundle
 RUN npm run build
 
 # Stage 2: Serve the build files using Nginx
