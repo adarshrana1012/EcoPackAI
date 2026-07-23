@@ -925,3 +925,19 @@ async def export_shipments(
             headers={"Content-Disposition": "attachment; filename=shipments_export.csv"}
         )
 
+
+# ---------------------------------------------------------------------------
+# Static Files / Frontend Hosting
+# ---------------------------------------------------------------------------
+import os
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+if os.path.isdir("frontend/dist"):
+    app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
+    
+    @app.exception_handler(404)
+    async def custom_404_handler(request: Request, exc: HTTPException):
+        if request.url.path.startswith("/v1/"):
+            return JSONResponse({"detail": "Not found"}, status_code=404)
+        return FileResponse("frontend/dist/index.html")

@@ -1,14 +1,28 @@
 # ==========================================================
-# EcoPackAI - Railway Deployment Dockerfile
+# EcoPackAI - Unified Full-Stack Dockerfile
 # ==========================================================
 
-FROM python:3.12-slim
+# ----------------------------------------------------------
+# Stage 1: Build the React Frontend
+# ----------------------------------------------------------
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app/frontend
 
-# Prevent Python from buffering logs
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
+# Install dependencies first for layer caching
+COPY frontend/package*.json ./
+RUN npm install
 
-# Install system packages
+# Copy frontend source and build
+COPY frontend/ ./
+RUN npm run build
+
+# ----------------------------------------------------------
+# Stage 2: Build the Python Backend Dependencies
+# ----------------------------------------------------------
+FROM python:3.12-slim AS backend-builder
+WORKDIR /build
+
+# Install compilation dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -16,22 +30,52 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create working directory
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# ----------------------------------------------------------
+# Stage 3: Final Runtime Image
+# ----------------------------------------------------------
+FROM python:3.12-slim
+
+# Prevent Python from buffering logs
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Install runtime tools
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Add non-root user
+RUN groupadd --gid 1000 ecopack && \
+    useradd --uid 1000 --gid ecopack --shell /bin/bash --create-home ecopack
+
 WORKDIR /app
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy virtual environment
+COPY --from=backend-builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy project
-COPY . .
+# Copy backend application
+COPY src/ ./src/
+COPY models/ ./models/
+COPY data/box_catalogue.json ./data/box_catalogue.json
+COPY alembic.ini ./
+COPY migrations/ ./migrations/
 
-# Python path
+# Copy built frontend
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+
+# Ensure permissions
+RUN chown -R ecopack:ecopack /app
+USER ecopack
+
 ENV PYTHONPATH=/app
 
-# Railway automatically injects PORT.
-# Default to 8080 when running locally.
+# Railway injects PORT. Defaults to 8080 locally.
 EXPOSE 8080
 
 # Health check

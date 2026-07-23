@@ -11,7 +11,7 @@ export const useApi = () => {
     // Use Railway backend URL when deployed.
     // Fall back to localhost during local development.
     const baseURL =
-      import.meta.env.VITE_API_URL || "http://localhost:8080/v1";
+      import.meta.env.VITE_API_URL || "/v1";
 
     const instance = axios.create({
       baseURL,
