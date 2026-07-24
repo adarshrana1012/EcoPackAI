@@ -45,7 +45,7 @@ export const Dashboard = () => {
   return (
     <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-slate-50 dark:bg-slate-900/50">
       {/* Welcome Banner */}
-      <div className="relative bg-slate-900 text-white rounded-3xl p-6 md:p-8 overflow-hidden shadow-xl border border-slate-800">
+      <div className="relative bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-3xl p-6 md:p-8 overflow-hidden shadow-xl border border-slate-200 dark:border-slate-800 transition-colors duration-300">
         <div className="absolute top-1/2 right-10 -translate-y-1/2 opacity-10 pointer-events-none">
           <Sparkles className="h-64 w-64 text-brand-green" />
         </div>
@@ -58,7 +58,7 @@ export const Dashboard = () => {
           <h1 className="text-3xl font-black md:text-4xl tracking-tight leading-none">
             Hello, {user?.name || 'User'}!
           </h1>
-          <p className="text-slate-400 text-sm leading-relaxed">
+          <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
             Welcome to the EcoPackAI optimization suite. Select a capability below to begin optimizing containers, classifying materials, or evaluating operational savings.
           </p>
         </div>
