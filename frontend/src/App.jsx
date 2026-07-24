@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { Navbar } from './components/Navbar';
@@ -37,34 +38,36 @@ const Layout = () => {
 function App() {
   return (
     <GlobalErrorBoundary>
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Public Login Route */}
-            <Route path="/login" element={<Login />} />
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Public Login Route */}
+              <Route path="/login" element={<Login />} />
 
-            {/* Protected Routes inside Layout */}
-            <Route element={<ProtectedRoute />}>
-              <Route element={<Layout />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/classify" element={<Classify />} />
-                <Route path="/pack" element={<PackOrder />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/shipments" element={<ShipmentHistory />} />
-                
-                {/* Admin-only route */}
-                <Route element={<ProtectedRoute requiredRole="admin" />}>
-                  <Route path="/admin" element={<Admin />} />
+              {/* Protected Routes inside Layout */}
+              <Route element={<ProtectedRoute />}>
+                <Route element={<Layout />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/classify" element={<Classify />} />
+                  <Route path="/pack" element={<PackOrder />} />
+                  <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/shipments" element={<ShipmentHistory />} />
+                  
+                  {/* Admin-only route */}
+                  <Route element={<ProtectedRoute requiredRole="admin" />}>
+                    <Route path="/admin" element={<Admin />} />
+                  </Route>
                 </Route>
               </Route>
-            </Route>
 
-            {/* Fallback Redirects */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+              {/* Fallback Redirects */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </GlobalErrorBoundary>
   );
 }

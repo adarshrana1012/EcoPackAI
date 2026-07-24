@@ -108,7 +108,7 @@ export const BoxVisualizer = ({ boxDimensions, placements }) => {
   const makePath = (points) => points.map((p) => `${p.x},${p.y}`).join(' ');
 
   return (
-    <div className="relative flex flex-col items-center bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-hidden h-[450px]">
+    <div className="relative flex flex-col items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 overflow-hidden h-[450px]">
       <div className="absolute top-4 left-4 z-10">
         <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Interactive 3D Packing Visualizer</span>
         <h3 className="text-sm font-semibold text-white mt-0.5">Box SKU: {boxDimensions ? 'Dynamic SKU' : 'N/A'}</h3>
@@ -135,7 +135,7 @@ export const BoxVisualizer = ({ boxDimensions, placements }) => {
 
       {/* Hover Info Tooltip overlay */}
       {hoveredItem ? (
-        <div className="absolute bottom-4 left-4 right-4 bg-slate-950/90 border border-slate-800 rounded-xl p-3 backdrop-blur shadow-2xl transition-all duration-200">
+        <div className="absolute bottom-4 left-4 right-4 bg-white/90 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800 rounded-xl p-3 backdrop-blur shadow-2xl transition-all duration-200">
           <div className="flex justify-between items-start">
             <div>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Item ID</span>

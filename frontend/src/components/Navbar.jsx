@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Leaf, LogOut, User } from 'lucide-react';
+import { ThemeToggle } from './ThemeToggle';
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
@@ -19,8 +20,10 @@ export const Navbar = () => {
             </span>
           </div>
 
-          {/* User Profile / Logout */}
-          <div className="flex items-center gap-4">
+          {/* User Profile / Theme / Logout */}
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            
             <div className="flex items-center gap-3 bg-slate-100/85 dark:bg-slate-800/80 py-1.5 pl-3 pr-4 rounded-full border border-slate-200/50 dark:border-slate-700/50">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-green text-white font-medium text-sm">
                 {user?.name ? user.name[0].toUpperCase() : <User className="h-4 w-4" />}
